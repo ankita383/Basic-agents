@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 from langgraph.graph import StateGraph, START, END
 from langgraph.graph.message import add_messages
 from langchain_groq import ChatGroq
+from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
 
 load_dotenv()
 
@@ -17,7 +18,9 @@ llm = ChatGroq(
 )
 
 def chatbot_node(state : ChatState):
-    response =  llm.invoke(state["messages"])
+    sys_msg = SystemMessage(content="You are a helpful AI Assistant specialized in Computer Science.")
+    combined_messages = [sys_msg] + state["messages"]
+    response = llm.invoke(combined_messages)
     return {"messages": [response]}
 
 flow = StateGraph(ChatState)
@@ -35,12 +38,12 @@ def run_chatbot():
         if user_input.lower() in ["exit", "quit"]:
             break
 
-        input_data = {"messages": [("user", user_input)]}
+        input_data = {"messages": [HumanMessage(content=user_input)]}
         
         for event in app.stream(input_data, config):
             for value in event.values():
-                assistant_msg = value["messages"][-1].content
-                print(f"Assistant: {assistant_msg}")
+                assistant_msg = value["messages"][-1]
+                print(f"Assistant ({type(assistant_msg).__name__}): {assistant_msg.content}")
 
 from langgraph.checkpoint.memory import MemorySaver
 memory = MemorySaver()
